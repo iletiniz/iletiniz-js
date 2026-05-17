@@ -1,0 +1,8 @@
+src
+examples
+.github
+tsconfig*.json
+*.tsbuildinfo
+.editorconfig
+.gitignore
+.npmrc

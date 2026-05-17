@@ -1,0 +1,55 @@
+{
+  "name": "@iletiniz/sdk",
+  "version": "0.1.0",
+  "description": "Iletiniz API resmi JavaScript / TypeScript SDK'si",
+  "license": "MIT",
+  "author": "Iletiniz",
+  "homepage": "https://github.com/iletiniz/iletiniz-js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iletiniz/iletiniz-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/iletiniz/iletiniz-js/issues"
+  },
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:types && npm run build:pkgjson",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build:pkgjson": "node -e \"require('fs').writeFileSync('dist/cjs/package.json', JSON.stringify({type:'commonjs'})); require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}));\"",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "iletiniz",
+    "sms",
+    "messaging",
+    "api",
+    "sdk"
+  ],
+  "devDependencies": {
+    "rimraf": "^5.0.5",
+    "typescript": "^5.4.0"
+  }
+}
