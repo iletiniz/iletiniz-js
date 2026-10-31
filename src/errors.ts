@@ -1,5 +1,6 @@
 export interface ApiErrorBody {
-  error?: string;
+  /** Eski düz biçim (`"error": "kod"`) veya API zarfı (`"error": {code, message}`). */
+  error?: string | { code?: string; message?: string };
   message?: string;
   [key: string]: unknown;
 }
@@ -100,9 +101,11 @@ export function buildApiError(
   body: ApiErrorBody | string | undefined,
   requestId: string | undefined,
 ): IletinizAPIError {
-  const code = typeof body === 'object' && body ? (body.error as string | undefined) : undefined;
+  const err = typeof body === 'object' && body ? body.error : undefined;
+  const code = typeof err === 'string' ? err : err?.code;
   const message =
     (typeof body === 'object' && body && (body.message as string | undefined)) ||
+    (typeof err === 'object' && err?.message) ||
     (typeof body === 'string' && body) ||
     `HTTP ${status}`;
 

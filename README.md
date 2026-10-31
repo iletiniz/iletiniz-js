@@ -57,6 +57,24 @@ SDK, public API yüzeyini kapsar:
 | `client.messages.sendBulk(params)`         | `POST /v1/messages/bulk`          |
 | `client.messages.retrieve(jobId)`          | `GET /v1/messages/{jobId}`        |
 | `client.messages.status(jobId)` (alias)    | `GET /v1/messages/{jobId}`        |
+| `client.scheduled.list(params?)`           | `GET /v1/scheduled`               |
+| `client.scheduled.retrieve(id)`            | `GET /v1/scheduled/{id}`          |
+| `client.scheduled.cancel(id)`              | `DELETE /v1/scheduled/{id}`       |
+| `client.reminders.create(params)`          | `POST /v1/reminders`              |
+| `client.reminders.list(params?)`           | `GET /v1/reminders`               |
+| `client.reminders.retrieve(id)`            | `GET /v1/reminders/{id}`          |
+| `client.reminders.update(id, params)`      | `PATCH /v1/reminders/{id}`        |
+| `client.reminders.delete(id)`              | `DELETE /v1/reminders/{id}`       |
+| `client.partner.profile()`                 | `GET /v1/partner`                 |
+| `client.partner.createAccount(params)`     | `POST /v1/partner/accounts`       |
+| `client.partner.listAccounts(params?)`     | `GET /v1/partner/accounts`        |
+| `client.partner.retrieveAccount(id)`       | `GET /v1/partner/accounts/{id}`   |
+| `client.partner.suspendAccount(id)` / `unsuspendAccount(id)` | `POST /v1/partner/accounts/{id}/suspend` / `unsuspend` |
+| `client.partner.createApiKey(id, params)`  | `POST /v1/partner/accounts/{id}/api-keys` |
+| `client.partner.listApiKeys(id)`           | `GET /v1/partner/accounts/{id}/api-keys` |
+| `client.partner.revokeApiKey(id, keyId)`   | `DELETE /v1/partner/accounts/{id}/api-keys/{keyId}` |
+| `client.partner.transferQuota(id, amount)` | `POST /v1/partner/accounts/{id}/quota-transfers` |
+| `client.partner.createWhatsappSignupLink(id)` | `POST /v1/partner/accounts/{id}/whatsapp-signup` |
 
 ### Tek mesaj göndermek
 
@@ -138,6 +156,105 @@ await client.messages.sendBulk({
   ],
 });
 ```
+
+### Onaylı WhatsApp şablonu göndermek
+
+Meta'da onaylanmış (APPROVED) bir şablonu `whatsappTemplate` ile gönderin. `components`, Meta Cloud API'nin `template.components` biçimini izler. `sender`, WhatsApp'ta gönderici numaranın Meta `phone_number_id` değeridir (verilmezse bağlantının numarası kullanılır).
+
+```ts
+const res = await client.messages.send({
+  to: '+905551234567',
+  provider: 'whatsapp',
+  sender: '123456789012345',
+  whatsappTemplate: {
+    name: 'randevu_hatirlatma',
+    language: 'tr',
+    components: [
+      { type: 'body', parameters: [{ type: 'text', text: 'Ayşe' }, { type: 'text', text: '5 Kasım 10:00' }] },
+    ],
+  },
+});
+console.log(res.whatsapp_template); // 'randevu_hatirlatma'
+```
+
+Toplu gönderimde alıcı başına değişkenleri `items[].whatsappComponents` ile verin (üst seviye `components` varsayılandır):
+
+```ts
+await client.messages.sendBulk({
+  provider: 'whatsapp',
+  whatsappTemplate: { name: 'kargo_cikti', language: 'tr' },
+  items: [
+    { to: '+905551112233', whatsappComponents: [{ type: 'body', parameters: [{ type: 'text', text: 'TR123' }] }] },
+    { to: '+905554445566', whatsappComponents: [{ type: 'body', parameters: [{ type: 'text', text: 'TR456' }] }] },
+  ],
+});
+```
+
+### Zamanlanmış gönderim
+
+`scheduledAt` verilirse mesaj şimdi gönderilmez; yanıt `{ scheduled_id, status: 'scheduled', ... }` olur. Saat dilimli ISO 8601 dizesi veya `Date` kabul edilir (en az 30 sn, en fazla 90 gün sonrası).
+
+```ts
+const job = await client.messages.send({
+  to: '+905551234567',
+  body: 'Yarınki randevunuzu hatırlatırız.',
+  scheduledAt: '2026-11-05T09:00:00+03:00',
+});
+
+const { data } = await client.scheduled.list({ status: 'scheduled' });
+await client.scheduled.cancel(job.scheduled_id);
+```
+
+### Hatırlatma kuralları
+
+```ts
+// Randevudan 24 saat ve 2 saat önce
+await client.reminders.create({
+  type: 'one_time',
+  name: 'Randevu #4411',
+  eventAt: '2026-11-10T14:00:00+03:00',
+  offsetsMinutes: [1440, 120],
+  message: { to: '+905551234567', body: 'Randevunuz 10 Kasım 14:00.' },
+});
+
+// Her pazartesi 09:30 (Europe/Istanbul)
+const rule = await client.reminders.create({
+  type: 'recurring',
+  name: 'Haftalık bülten',
+  frequency: 'weekly',
+  dayOfWeek: 1,
+  timeOfDay: '09:30',
+  message: { to: '+905551234567', template: 'haftalik_bulten' },
+});
+
+await client.reminders.update(rule.id, { status: 'paused' });
+await client.reminders.delete(rule.id);
+```
+
+### Partner API
+
+Partner hesabının `partner:manage` yetkili canlı anahtarıyla:
+
+```ts
+const partner = new IletinizClient({ apiKey: process.env.ILETINIZ_PARTNER_KEY });
+
+const child = await partner.partner.createAccount({ name: 'Klinik Ankara', externalRef: 'klinik-42' });
+const key = await partner.partner.createApiKey(child.id, { name: 'prod' });
+// key.key yalnız bu yanıtta döner; güvenli şekilde saklayın.
+
+// Alt hesabın anahtarlarını listeleyin (düz metin anahtar dönmez, yalnız key_prefix) ve gerekirse iptal edin:
+const { data: keys } = await partner.partner.listApiKeys(child.id);
+await partner.partner.revokeApiKey(child.id, keys[0].id); // idempotent: iptal edilmişse aynı nesne döner
+
+await partner.partner.transferQuota(child.id, 5000);
+const link = await partner.partner.createWhatsappSignupLink(child.id);
+// link.url'yi müşterinize iletin (24 saat geçerli, tek kullanımlık).
+
+// Alt hesap adına gönderim, alt hesabın anahtarıyla yapılır:
+const childClient = new IletinizClient({ apiKey: key.key });
+```
+
+`transferQuota`, `createAccount` ve `createApiKey` istekleri hata durumunda otomatik yeniden denenmez (çift aktarım/çift kayıt riskine karşı).
 
 ### Mesaj durumunu sorgulamak
 

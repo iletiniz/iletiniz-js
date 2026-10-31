@@ -1,6 +1,6 @@
 {
   "name": "@iletiniz/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Iletiniz API resmi JavaScript / TypeScript SDK'si",
   "license": "MIT",
   "author": "Iletiniz",
@@ -39,7 +39,8 @@
     "build:pkgjson": "node -e \"require('fs').writeFileSync('dist/cjs/package.json', JSON.stringify({type:'commonjs'})); require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}));\"",
     "clean": "rimraf dist",
     "prepublishOnly": "npm run clean && npm run build",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "node --test test/client.test.mjs"
   },
   "keywords": [
     "iletiniz",

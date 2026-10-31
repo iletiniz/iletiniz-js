@@ -21,6 +21,8 @@ export interface HttpRequest {
   query?: Record<string, string | number | undefined>;
   body?: unknown;
   options?: RequestOptions;
+  /** false → idempotent olmayan istek; ağ/5xx hatasında yeniden denenmez. */
+  retry?: boolean;
 }
 
 export class HttpClient {
@@ -70,7 +72,7 @@ export class HttpClient {
         if (controller.signal.aborted) {
           throw new IletinizTimeoutError(`İstek ${timeoutMs}ms içinde tamamlanamadı.`);
         }
-        if (this.shouldRetry(undefined, attempt)) {
+        if (req.retry !== false && this.shouldRetry(undefined, attempt)) {
           attempt++;
           await sleep(backoffMs(attempt));
           continue;
@@ -95,7 +97,7 @@ export class HttpClient {
         }
       }
 
-      if (this.shouldRetry(response.status, attempt)) {
+      if (req.retry !== false && this.shouldRetry(response.status, attempt)) {
         attempt++;
         await sleep(backoffMs(attempt, response.headers.get('retry-after')));
         continue;

@@ -1,12 +1,15 @@
 import { HttpClient, type HttpClientConfig } from './http.js';
 import { MessagesResource } from './resources/messages.js';
 import { HealthResource } from './resources/health.js';
+import { ScheduledResource } from './resources/scheduled.js';
+import { RemindersResource } from './resources/reminders.js';
+import { PartnerResource } from './resources/partner.js';
 import { IletinizError } from './errors.js';
 
 const DEFAULT_BASE_URL = 'https://api.iletiniz.com';
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_RETRIES = 2;
-const SDK_VERSION = '0.1.0';
+const SDK_VERSION = '0.2.0';
 
 const API_KEY_RE = /^iltz_(?:live|test)_[A-Za-z0-9_-]+$/;
 
@@ -31,6 +34,9 @@ export interface IletinizClientOptions {
 export class IletinizClient {
   public readonly messages: MessagesResource;
   public readonly health: HealthResource;
+  public readonly scheduled: ScheduledResource;
+  public readonly reminders: RemindersResource;
+  public readonly partner: PartnerResource;
 
   private readonly http: HttpClient;
 
@@ -69,6 +75,9 @@ export class IletinizClient {
     this.http = new HttpClient(config);
     this.messages = new MessagesResource(this.http);
     this.health = new HealthResource(this.http);
+    this.scheduled = new ScheduledResource(this.http);
+    this.reminders = new RemindersResource(this.http);
+    this.partner = new PartnerResource(this.http);
   }
 }
 
